@@ -56,6 +56,24 @@ function Set-HPET {
 function Set-PowerPlan {
     Write-Host "[+] Setting Ultimate Performance power plan..."
 
-    powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61
+    powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 2>$null
     powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
 }
+
+function Start-SystemTweaks {
+    Write-Host "`n====================================" -ForegroundColor Cyan
+    Write-Host "      Running System Optimizations"
+    Write-Host "====================================`n"
+
+    Optimize-Services
+    Disable-Cortana
+    Disable-Bloatware
+    Cleanup-System
+    Set-HPET
+    Set-PowerPlan
+
+    Write-Host "`n[✔] System optimizations applied successfully!" -ForegroundColor Green
+}
+
+# EXPORT FUNCTIONS
+Export-ModuleMember -Function *
