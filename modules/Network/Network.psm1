@@ -1,78 +1,64 @@
-# ===============================
-# Network.psm1 – Full Aggressive Tweaks
-# ===============================
+# ==================================================
+# Network.psm1 – Full Aggressive Network Tweaks
+# ==================================================
 
 function Set-DNSFast {
-    <#
-        .SYNOPSIS
-        Apply fast global DNS (Cloudflare + Google)
-    #>
-    Write-Host "[+] Applying Fast DNS settings..."
+    Write-Host "[Network] Applying Fast DNS (Cloudflare + Google)..." -ForegroundColor Cyan
 
-    $adapters = Get-DnsClientServerAddress -AddressFamily IPv4
+    $dnsServers = @("1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4")
+    $adapters = Get-DnsClientServerAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue
 
     foreach ($adapter in $adapters) {
         Set-DnsClientServerAddress `
             -InterfaceIndex $adapter.InterfaceIndex `
-            -ServerAddresses @("1.1.1.1","8.8.8.8") `
+            -ServerAddresses $dnsServers `
             -ErrorAction SilentlyContinue
     }
 
-    Write-Host " ✓ DNS applied to all adapters"
+    Write-Host " [+] DNS applied to all adapters."
 }
 
 function Set-TCPGamingMode {
-    <#
-        .SYNOPSIS
-        Apply low-latency TCP settings optimized for gaming
-    #>
-    Write-Host "[+] Applying low-latency TCP tweaks..."
+    Write-Host "[Network] Applying modern TCP gaming tweaks..." -ForegroundColor Cyan
 
-    netsh int tcp set global autotuninglevel=disabled
-    netsh int tcp set global rss=enabled
-    netsh int tcp set global chimney=enabled
-    netsh int tcp set global ecncapability=disabled
-    netsh int tcp set global timestamps=disabled
-    netsh int tcp set global rsc=enabled
-    netsh int tcp set security mpp=disabled
+    $commands = @(
+        "netsh int tcp set global autotuninglevel=disabled",
+        "netsh int tcp set global rss=enabled",
+        "netsh int tcp set global ecncapability=disabled",
+        "netsh int tcp set global timestamps=disabled",
+        "netsh int tcp set global pacingprofile=off",
+        "netsh int tcp set supplemental template=internet congestionprovider=ctcp"
+    )
 
-    Write-Host " ✓ TCP Gaming Mode enabled"
+    foreach ($cmd in $commands) {
+        Invoke-Expression $cmd
+    }
+
+    Write-Host " [+] TCP Gaming Mode optimized."
 }
 
 function Disable-NetworkQoS {
-    <#
-        .SYNOPSIS
-        Disable QoS Packet Scheduler for lowest latency
-    #>
-    Write-Host "[+] Disabling QoS Packet Scheduler..."
+    Write-Host "[Network] Disabling QoS Packet Scheduler (lowest latency)..." -ForegroundColor Cyan
 
-    reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Psched" /v NonBestEffortLimit /t REG_DWORD /d 0 /f
+    reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Psched" /v NonBestEffortLimit /t REG_DWORD /d 0 /f | Out-Null
+    reg add "HKLM\SYSTEM\CurrentControlSet\Services\Psched" /v Start /t REG_DWORD /d 4 /f | Out-Null
 
-    Write-Host " ✓ QoS disabled"
+    Write-Host " [+] QoS disabled."
 }
 
 function Reset-NetworkStack {
-    <#
-        .SYNOPSIS
-        Full network stack reset (aggressive)
-    #>
-    Write-Host "[+] Resetting complete network stack..."
+    Write-Host "[Network] Performing FULL stack reset..." -ForegroundColor Cyan
 
-    netsh winsock reset
-    netsh int ip reset
-    ipconfig /release
-    ipconfig /renew
-    ipconfig /flushdns
+    netsh winsock reset | Out-Null
+    netsh int ip reset | Out-Null
 
-    Write-Host " ✓ Network stack fully reset"
+    ipconfig /flushdns | Out-Null
+
+    Write-Host " [+] Network stack fully reset."
 }
 
 function Clean-NetworkInterfaces {
-    <#
-        .SYNOPSIS
-        Remove stale network profiles and adapters
-    #>
-    Write-Host "[+] Cleaning unused network interfaces..."
+    Write-Host "[Network] Cleaning old WiFi profiles..." -ForegroundColor Cyan
 
     $profiles = netsh wlan show profiles | Select-String "All User Profile" | ForEach-Object {
         $_.ToString().Split(":")[1].Trim()
@@ -80,45 +66,51 @@ function Clean-NetworkInterfaces {
 
     foreach ($profile in $profiles) {
         netsh wlan delete profile name="$profile" | Out-Null
-        Write-Host " ✓ Removed WiFi profile: $profile"
+        Write-Host " [+] Removed WiFi profile: $profile"
     }
 
-    Write-Host " ✓ Interfaces cleaned"
+    Write-Host " [+] WiFi profiles cleaned."
 }
 
 function Optimize-WiFiLatency {
-    <#
-        .SYNOPSIS
-        Apply tweaks specific to WiFi latency
-    #>
-    Write-Host "[+] Applying WiFi latency reduction..."
+    Write-Host "[Network] Applying WiFi latency optimization..." -ForegroundColor Cyan
 
-    reg add "HKLM\SYSTEM\CurrentControlSet\Services\WlanSvc\Parameters" /v DisableScanWhileConnected /t REG_DWORD /d 1 /f
-    reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v TcpAckFrequency /t REG_DWORD /d 1 /f
-    reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v TCPNoDelay /t REG_DWORD /d 1 /f
+    $regEdits = @{
+        "HKLM\SYSTEM\CurrentControlSet\Services\WlanSvc\Parameters" = @{ DisableScanWhileConnected = 1 }
+        "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"   = @{ TcpAckFrequency = 1; TCPNoDelay = 1 }
+        "HKLM\SOFTWARE\Microsoft\WlanSvc\Roaming"                   = @{ RoamDecision = 0; RoamEnable = 0; RoamDelta = 20 }
+    }
 
-    Write-Host " ✓ WiFi optimized"
+    foreach ($key in $regEdits.Keys) {
+        New-Item -Path $key -Force | Out-Null
+        foreach ($name in $regEdits[$key].Keys) {
+            reg add $key /v $name /t REG_DWORD /d $($regEdits[$key][$name]) /f | Out-Null
+        }
+    }
+
+    Write-Host " [+] WiFi latency minimized."
 }
 
 function Optimize-Ethernet {
-    <#
-        .SYNOPSIS
-        Enable best performance settings for wired connections
-    #>
-    Write-Host "[+] Optimizing Ethernet performance..."
+    Write-Host "[Network] Optimizing Ethernet performance..." -ForegroundColor Cyan
 
-    netsh interface ipv4 set subinterface "Ethernet" mtu=1500 store=persistent
-    netsh interface ipv4 set global icmpredirects=disabled
+    $ethernet = Get-NetAdapter | Where-Object { $_.Status -eq "Up" -and $_.InterfaceDescription -notmatch "Wi-Fi" }
 
-    Write-Host " ✓ Ethernet optimized"
+    foreach ($adapter in $ethernet) {
+        Write-Host " [+] Optimizing: $($adapter.Name)"
+
+        Set-NetIPInterface -InterfaceIndex $adapter.ifIndex -NlMtu 1500 -ErrorAction SilentlyContinue
+        netsh interface ipv4 set global icmpredirects=disabled | Out-Null
+
+        reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\$($adapter.InterfaceGuid)" /v TcpAckFrequency /t REG_DWORD /d 1 /f | Out-Null
+        reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\$($adapter.InterfaceGuid)" /v TCPNoDelay /t REG_DWORD /d 1 /f | Out-Null
+    }
+
+    Write-Host " [+] Ethernet fully optimized."
 }
 
 function Apply-NetworkAggressivePreset {
-    <#
-        .SYNOPSIS
-        Applies ALL network tweaks aggressively
-    #>
-    Write-Host "[+] Applying FULL Network Aggressive Preset..."
+    Write-Host "`n========== FULL NETWORK AGGRESSIVE PRESET ==========" -ForegroundColor Cyan
 
     Set-DNSFast
     Set-TCPGamingMode
@@ -126,7 +118,7 @@ function Apply-NetworkAggressivePreset {
     Optimize-WiFiLatency
     Optimize-Ethernet
 
-    Write-Host " ✓ All network tweaks applied!"
+    Write-Host "`n[✔] All network tweaks applied successfully!" -ForegroundColor Green
 }
 
 Export-ModuleMember -Function *
