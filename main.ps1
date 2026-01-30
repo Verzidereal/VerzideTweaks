@@ -1,36 +1,37 @@
-Import-Module "$PSScriptRoot\utils.ps1" -Force
+# VerzideTweaks - Main Launcher
+# Loads modules and allows applying presets
 
-function Show-Menu {
-    Clear-Host
-    Write-Host "====================================" -ForegroundColor Cyan
-    Write-Host "       Windows FPS Optimizer" -ForegroundColor Green
-    Write-Host "====================================" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "1) Optimize System"
-    Write-Host "2) Gaming Tweaks"
-    Write-Host "3) Network Tweaks"
-    Write-Host "4) Service Tweaks"
-    Write-Host "5) Telemetry / Privacy"
-    Write-Host "6) Restore Defaults"
-    Write-Host "0) Exit"
-    Write-Host ""
+Write-Host ""
+Write-Host "==============================="
+Write-Host "     Verzide Tweaks v1.0       "
+Write-Host "==============================="
+Write-Host ""
+
+# Load all tweak modules
+Import-Module "$PSScriptRoot/modules/System/System.psd1"
+Import-Module "$PSScriptRoot/modules/Network/Network.psd1"
+Import-Module "$PSScriptRoot/modules/Gaming/Gaming.psd1"
+Import-Module "$PSScriptRoot/modules/Security/Security.psd1"
+
+Write-Host "[+] Modules loaded successfully."
+Write-Host ""
+
+# Menu
+Write-Host "Choose an option:"
+Write-Host "1) Apply Balanced Preset"
+Write-Host "2) Apply MaxFPS Preset"
+Write-Host "3) Apply LowLatency Preset"
+Write-Host "4) Run Individual Tweaks"
+Write-Host "0) Exit"
+Write-Host ""
+
+$choice = Read-Host "Select a number"
+
+switch ($choice) {
+    "1" { . "$PSScriptRoot/presets/Balanced.ps1" }
+    "2" { . "$PSScriptRoot/presets/MaxFPS.ps1" }
+    "3" { . "$PSScriptRoot/presets/LowLatency.ps1" }
+    "4" { . "$PSScriptRoot/tools/ManualTweaks.ps1" }
+    "0" { exit }
+    default { Write-Host "Invalid option." }
 }
-
-while ($true) {
-    Show-Menu
-    $option = Read-Host "Select an option"
-
-    switch ($option) {
-        1 { . "$PSScriptRoot\modules\system.ps1" }
-        2 { . "$PSScriptRoot\modules\gaming.ps1" }
-        3 { . "$PSScriptRoot\modules\network.ps1" }
-        4 { . "$PSScriptRoot\modules\services.ps1" }
-        5 { . "$PSScriptRoot\modules\telemetry.ps1" }
-        6 { . "$PSScriptRoot\modules\restore.ps1" }
-        0 { exit }
-        default { Write-Host "Invalid option." -ForegroundColor Red }
-    }
-
-    pause
-}
-
