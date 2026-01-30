@@ -1,5 +1,9 @@
+# ==========================================================
+#  SECURITY MODULE - FULL AGGRESSIVE HARDENING
+# ==========================================================
+
 function Invoke-StrongPrivacyHardening {
-    Write-Host "[+] Applying strong privacy hardening..."
+    Write-Host "[Security] Applying strong privacy hardening..." -ForegroundColor Cyan
 
     $regPaths = @{
         "HKCU\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo" = @{ Enabled = 0 }
@@ -16,7 +20,8 @@ function Invoke-StrongPrivacyHardening {
 
     foreach ($path in $regPaths.Keys) {
         foreach ($name in $regPaths[$path].Keys) {
-            reg add $path /v $name /t REG_DWORD /d $($regPaths[$path][$name]) /f | Out-Null
+            New-Item -Path $path -Force | Out-Null
+            Set-ItemProperty -Path $path -Name $name -Value $($regPaths[$path][$name]) -Type DWord
         }
     }
 
@@ -24,7 +29,7 @@ function Invoke-StrongPrivacyHardening {
 }
 
 function Invoke-FullDebloatSecuritySafe {
-    Write-Host "[+] Removing bloatware safely..."
+    Write-Host "[Security] Removing bloatware safely..." -ForegroundColor Cyan
 
     $apps = @(
         "Microsoft.3DBuilder",
@@ -39,17 +44,21 @@ function Invoke-FullDebloatSecuritySafe {
     )
 
     foreach ($app in $apps) {
-        Get-AppxPackage -AllUsers *$app* | Remove-AppxPackage -ErrorAction SilentlyContinue
-        Write-Host " ✓ Removed: $app"
+        try {
+            Get-AppxPackage -AllUsers *$app* | Remove-AppxPackage -ErrorAction SilentlyContinue
+            Write-Host " [+] Removed: $app"
+        } catch {
+            Write-Host " [!] Could not remove: $app"
+        }
     }
 
     Write-Host "[✔] Safe debloat completed."
 }
 
 function Invoke-FirewallHardening {
-    Write-Host "[+] Applying firewall hardening (aggressive)..."
+    Write-Host "[Security] Applying firewall hardening (aggressive)..." -ForegroundColor Cyan
 
-    netsh advfirewall set allprofiles state on
+    netsh advfirewall set allprofiles state on | Out-Null
 
     $blockRules = @(
         "spoolsv.exe",
@@ -58,37 +67,56 @@ function Invoke-FirewallHardening {
     )
 
     foreach ($exe in $blockRules) {
-        netsh advfirewall firewall add rule name="Block $exe" dir=out action=block program="%windir%\system32\$exe" enable=yes | Out-Null
+        $path = "$env:WINDIR\System32\$exe"
+        if (Test-Path $path) {
+            netsh advfirewall firewall add rule name="Block $exe" dir=out action=block program="$path" enable=yes | Out-Null
+            Write-Host " [+] Blocked outbound: $exe"
+        }
     }
 
-    netsh advfirewall firewall add rule name="Secure DNS (DoT/DoH)" dir=out action=allow protocol=TCP localport=853 | Out-Null
+    netsh advfirewall firewall add rule name="Allow Secure DNS (DoT/DoH)" dir=out action=allow protocol=TCP localport=853 | Out-Null
 
     Write-Host "[✔] Firewall hardened aggressively."
 }
 
 function Invoke-NetworkHardening {
-    Write-Host "[+] Applying advanced network security hardening..."
+    Write-Host "[Security] Applying advanced network hardening..." -ForegroundColor Cyan
 
     reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters" /v DisabledComponents /t REG_DWORD /d 0xff /f | Out-Null
     reg add "HKLM\SYSTEM\CurrentControlSet\Services\NetBT\Parameters" /v NoNameReleaseOnDemand /t REG_DWORD /d 1 /f | Out-Null
 
-    # Disable old protocols
-    Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart -ErrorAction SilentlyContinue
+    try {
+        Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart -ErrorAction Stop
+        Write-Host " [+] Disabled SMB1Protocol"
+    } catch {
+        Write-Host " [!] SMB1 already disabled or not available."
+    }
 
     Write-Host "[✔] Network hardened."
 }
 
 function Invoke-ExploitProtectionHardening {
-    Write-Host "[+] Applying exploit protection rules..."
+    Write-Host "[Security] Applying exploit protection rules..." -ForegroundColor Cyan
 
-    Set-ProcessMitigation -System -Enable DEP, SEHOP, ForceRelocateImages, StrictHandleCheck, CFG
-    Set-ProcessMitigation -System -Disable Win32kSystemCalls
+    try {
+        Set-ProcessMitigation -System -Enable DEP, SEHOP, ForceRelocateImages, StrictHandleCheck, CFG -ErrorAction Stop
+        Write-Host " [+] Core exploit mitigations applied."
+    } catch {
+        Write-Host " [!] Some exploit mitigations not supported."
+    }
+
+    try {
+        Set-ProcessMitigation -System -Disable Win32kSystemCalls -ErrorAction Stop
+        Write-Host " [+] Win32k system call restrictions applied."
+    } catch {
+        Write-Host " [!] Win32k mitigation unsupported on this system."
+    }
 
     Write-Host "[✔] Exploit protection elevated."
 }
 
 function Invoke-DisableRemoteRisks {
-    Write-Host "[+] Disabling remote services (aggressive)..."
+    Write-Host "[Security] Disabling remote services (aggressive)..." -ForegroundColor Cyan
 
     $services = @(
         "RemoteRegistry",
@@ -99,16 +127,20 @@ function Invoke-DisableRemoteRisks {
     )
 
     foreach ($svc in $services) {
-        Set-Service $svc -StartupType Disabled -ErrorAction SilentlyContinue
-        Stop-Service $svc -ErrorAction SilentlyContinue
-        Write-Host " ✓ Disabled: $svc"
+        try {
+            Stop-Service $svc -ErrorAction SilentlyContinue
+            Set-Service $svc -StartupType Disabled -ErrorAction SilentlyContinue
+            Write-Host " [+] Disabled: $svc"
+        } catch {
+            Write-Host " [!] Could not disable: $svc"
+        }
     }
 
     Write-Host "[✔] Remote attack surface minimized."
 }
 
 function Invoke-FullSecurityHardening {
-    Write-Host "`n=== FULL SECURITY HARDENING ==="
+    Write-Host "`n========== FULL SECURITY HARDENING ==========" -ForegroundColor Cyan
 
     Invoke-StrongPrivacyHardening
     Invoke-FullDebloatSecuritySafe
@@ -117,5 +149,7 @@ function Invoke-FullSecurityHardening {
     Invoke-ExploitProtectionHardening
     Invoke-DisableRemoteRisks
 
-    Write-Host "[✔] Full aggressive security hardening applied successfully."
+    Write-Host "`n[✔] Full aggressive security hardening applied successfully." -ForegroundColor Green
 }
+
+Export-ModuleMember -Function *
