@@ -1,0 +1,54 @@
+# Ignore PowerShell cache and temp files
+*.psd1.psm1.ps1xml
+*.cache
+*.log
+*.tmp
+
+# Ignore user-specific data
+*.psuser
+*.psworkspace
+
+# Ignore PowerShell transcript logs
+transcripts/
+
+# Ignore local modules installed for dev
+Modules/*/bin/
+Modules/*/obj/
+
+# Ignore VSCode workspace settings (optional)
+.vscode/
+*.code-workspace
+
+# Ignore Windows junk
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Ignore compressed files
+*.zip
+*.rar
+*.7z
+
+# Ignore PowerShell DSC compiled files
+*.mof
+*.mof.checksum
+
+# Ignore build output
+build/
+output/
+dist/
+
+# Ignore backup files
+*~
+*.bak
+*.old
+
+# Ignore NPM/node modules (if GUI uses electron)
+node_modules/
+
+# Ignore Python virtual envs (if you add python tools)
+venv/
+.env/
+
+# Ignore GitHub Pages build
+_site/
