@@ -161,8 +161,7 @@ This project is licensed under the MIT License — free to use, modify, and dist
 👑 Credits
 
 Made with ❤ by Verzide
-
+```
 <p align="center">
   <img src="assets/logo.svg" width="300" alt="VerzideTweaks Logo">
 </p>
-
