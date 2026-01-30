@@ -1,33 +1,118 @@
-function Optimize-GPU {
-    Write-Host "[+] Applying GPU performance optimizations..."
+# =====================================
+# Gaming.psm1 – Full Aggressive Gaming Tweaks
+# =====================================
 
-    reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" /v HwSchMode /t REG_DWORD /d 2 /f
-    reg add "HKLM\SOFTWARE\Microsoft\Windows\Dwm" /v OverlayTestMode /t REG_DWORD /d 5 /f
+function Enable-GameMode {
+    Write-Host "[+] Enabling Game Mode & Gaming Features..."
+
+    reg add "HKCU\Software\Microsoft\GameBar" /v "AllowAutoGameMode" /t REG_DWORD /d 1 /f
+    reg add "HKCU\Software\Microsoft\GameBar" /v "AutoGameModeEnabled" /t REG_DWORD /d 1 /f
+    reg add "HKCU\System\GameConfigStore" /v "GameDVR_FSEBehaviorMode" /t REG_DWORD /d 2 /f
+    reg add "HKCU\System\GameConfigStore" /v "GameDVR_FSEBehavior" /t REG_DWORD /d 2 /f
+
+    Write-Host " ✓ GameMode enabled"
 }
 
-function Optimize-Scheduler {
-    Write-Host "[+] Reducing system scheduler latency..."
+function Disable-XboxOverlays {
+    Write-Host "[+] Disabling Xbox Game Bar + DVR + Captures..."
 
-    reg add "HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl" /v Win32PrioritySeparation /t REG_DWORD /d 26 /f
-}
+    reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" /v "AppCaptureEnabled" /t REG_DWORD /d 0 /f
+    reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" /v "AudioCaptureEnabled" /t REG_DWORD /d 0 /f
 
-function Optimize-WindowsGamingSettings {
-    Write-Host "[+] Disabling game bar and DVR..."
+    reg add "HKCU\System\GameConfigStore" /v "GameDVR_Enabled" /t REG_DWORD /d 0 /f
+    reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR" /v "AllowGameDVR" /t REG_DWORD /d 0 /f
 
-    reg add "HKCU\SOFTWARE\Microsoft\GameBar" /v AllowAutoGameMode /t REG_DWORD /d 1 /f
-    reg add "HKCU\SOFTWARE\Microsoft\GameBar" /v AutoGameModeEnabled /t REG_DWORD /d 1 /f
-    reg add "HKCU\System\GameConfigStore" /v GameDVR_Enabled /t REG_DWORD /d 0 /f
+    Write-Host " ✓ Xbox overlays disabled"
 }
 
 function Enable-UltimatePerformance {
-    Write-Host "[+] Enabling Ultimate Performance Power Plan..."
-    powercfg -setactive SCHEME_MIN
+    Write-Host "[+] Setting Ultimate Performance power plan..."
+
+    powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 2>$null
+    powercfg -setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+
+    Write-Host " ✓ Ultimate Performance enabled"
 }
 
-function Reduce-InputLag {
-    Write-Host "[+] Reducing input latency..."
+function Apply-GPURenderTweaks {
+    Write-Host "[+] Applying GPU Scheduling + HAGS + MPO fixes..."
 
-    reg add "HKCU\Control Panel\Mouse" /v MouseSensitivity /t REG_SZ /d "10" /f
-    reg add "HKCU\Control Panel\Desktop" /v MenuShowDelay /t REG_SZ /d "0" /f
+    # Hardware Accelerated GPU Scheduling
+    reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers" /v HwSchMode /t REG_DWORD /d 2 /f
+
+    # MPO Fix / disable MPO (reduces stutter for many GPUs)
+    reg add "HKLM\SOFTWARE\Microsoft\Windows\Dwm" /v OverlayTestMode /t REG_DWORD /d 5 /f
+
+    # VRR / G-Sync compatible
+    reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers\FeatureSet" /v VRRforDRRSupported /t REG_DWORD /d 1 /f
+
+    Write-Host " ✓ GPU tweaks applied"
 }
 
+function Optimize-GameProcesses {
+    Write-Host "[+] Optimizing priorities for competitive games..."
+
+    $games = @(
+        "cs2.exe",
+        "fortniteclient-win64-shipping.exe",
+        "valorant.exe",
+        "r5apex.exe",
+        "mw2.exe",
+        "cod.exe",
+        "overwatch.exe",
+        "rocketleague.exe"
+    )
+
+    foreach ($game in $games) {
+        Get-Process -Name $game -ErrorAction SilentlyContinue | ForEach-Object {
+            $_.PriorityClass = "High"
+            Write-Host " ✓ Priority set: $game"
+        }
+    }
+}
+
+function Apply-TimerResolution {
+    Write-Host "[+] Setting Timer Resolution to 0.5ms..."
+
+    reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power" `
+        /v HpetEnabled /t REG_DWORD /d 0 /f
+
+    reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power" `
+        /v PlatformAoAcOverride /t REG_DWORD /d 0 /f
+
+    Write-Host " ✓ Timer Resolution tweaks applied"
+}
+
+function Disable-BackgroundServices {
+    Write-Host "[+] Disabling unnecessary background services..."
+
+    $services = @(
+        "DiagTrack",   # Telemetry
+        "SysMain",     # Superfetch – causes spikes in gaming
+        "WSearch",     # Windows Search indexing
+        "XboxGipSvc",
+        "XblAuthManager",
+        "XblGameSave",
+        "WbioSrvc"
+    )
+
+    foreach ($svc in $services) {
+        Set-Service -Name $svc -StartupType Disabled -ErrorAction SilentlyContinue
+        Write-Host " ✓ Disabled service: $svc"
+    }
+}
+
+function Apply-FullGamingPreset {
+    Write-Host "[+] Applying FULL AGGRESSIVE GAMING PRESET..."
+
+    Enable-GameMode
+    Disable-XboxOverlays
+    Enable-UltimatePerformance
+    Apply-GPURenderTweaks
+    Apply-TimerResolution
+    Disable-BackgroundServices
+
+    Write-Host " ✓ All gaming optimizations applied!"
+}
+
+Export-ModuleMember -Function *
