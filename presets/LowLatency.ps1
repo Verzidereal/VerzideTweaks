@@ -1,23 +1,34 @@
-Write-Host "[Low-Latency Preset] Reducing latency..." -ForegroundColor Yellow
+Write-Host "[MAX FPS PRESET] Applying extreme tweaks..." -ForegroundColor Red
 
 Import-Module "$PSScriptRoot\..\Modules\Performance.psm1"
 Import-Module "$PSScriptRoot\..\Modules\Network.psm1"
 Import-Module "$PSScriptRoot\..\Modules\Gaming.psm1"
+Import-Module "$PSScriptRoot\..\Modules\Security.psm1"
 
-# CPU/GPU low-latency
-Apply-TimerResolution
+# System performance max
+Enable-UltimatePerformance
+Disable-BackgroundServices
+Optimize-RegistryAggressive
+Disable-Animations
+Disable-VisualEffects
+
+# GPU + Rendering
 Apply-GPURenderTweaks
-Enable-GameMode
-Disable-XboxOverlays
+Apply-TimerResolution
+Force-HighPerformanceGPU
 
-# Network optimizations
-Apply-NetworkLowLatency
+# Network performance max
+Apply-NetworkTournamentMode
 Apply-DNSGaming
 Disable-PowerSavingNetwork
+Apply-TCPGamingMode
 
-# System
-Set-ProcessorScheduling Gaming
-Disable-BackgroundServices
-Optimize-RegistryLowLatency
+# Gaming
+Apply-FullGamingPreset
+Optimize-GameProcesses
 
-Write-Host "✓ Low-latency preset applied." -ForegroundColor Green
+# Security (safe but lightened)
+Disable-DefenderNonCritical
+Optimize-FirewallGaming
+
+Write-Host "✓ MAX FPS preset applied." -ForegroundColor Green
