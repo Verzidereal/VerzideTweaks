@@ -1,11 +1,23 @@
-Write-Host "[Preset] Applying LowLatency preset..."
+Write-Host "[Low-Latency Preset] Reducing latency..." -ForegroundColor Yellow
 
-Set-HPET
-Optimize-TCP
-Disable-Nagle
-Optimize-NetworkAdapter
-Reduce-InputLag
-Apply-FirewallGamingPreset
+Import-Module "$PSScriptRoot\..\Modules\Performance.psm1"
+Import-Module "$PSScriptRoot\..\Modules\Network.psm1"
+Import-Module "$PSScriptRoot\..\Modules\Gaming.psm1"
 
-Write-Host "[LowLatency] Done!"
+# CPU/GPU low-latency
+Apply-TimerResolution
+Apply-GPURenderTweaks
+Enable-GameMode
+Disable-XboxOverlays
 
+# Network optimizations
+Apply-NetworkLowLatency
+Apply-DNSGaming
+Disable-PowerSavingNetwork
+
+# System
+Set-ProcessorScheduling Gaming
+Disable-BackgroundServices
+Optimize-RegistryLowLatency
+
+Write-Host "✓ Low-latency preset applied." -ForegroundColor Green
